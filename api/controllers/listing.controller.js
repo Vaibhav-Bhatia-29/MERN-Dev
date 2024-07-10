@@ -71,31 +71,43 @@ export const getListings = async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit) || 9; // Limit the number of listings per page
     const startIndex = parseInt(req.query.startIndex) || 0; // Start index of page
-    
-    const brand = req.query.brand || ''; // Filter by brand
-    const year = parseInt(req.query.year) || null; // Filter by year
-    const fuelType = req.query.fuelType === 'true'; // Filter by fuel type
-    const transmissionType = req.query.transmissionType === 'true'; // Filter by transmission type
-    const minPrice = parseInt(req.query.minPrice) || 0; // Minimum price filter
-    const maxPrice = parseInt(req.query.maxPrice) || Infinity; // Maximum price filter
-    const searchTerm = req.query.searchTerm || ''; // Search term filter
 
-    const sort = req.query.sort || 'createdAt'; // Sort listings by field
-    const order = req.query.order === 'asc' ? 1 : -1; // Sort order (ascending or descending)
+    const brand = req.query.brand || ''; // Filter by brand
+    const variant = req.query.variant || ''; // Filter by variant
+    const fuelType = req.query.fuelType || ''; // Filter by fuel type
+    const transmissionType = req.query.transmissionType || ''; // Filter by transmission type
+
+    let sortField = 'createdAt'; // Default sort field
+    let sortOrder = -1; // Default sort order (descending)
+
+    if (req.query.sort === 'Price low to high') {
+      sortField = 'askingPrice';
+      sortOrder = 1;
+    } else if (req.query.sort === 'Price high to low') {
+      sortField = 'askingPrice';
+      sortOrder = -1;
+    } else if (req.query.sort === 'Latest') {
+      sortField = 'createdAt';
+      sortOrder = -1;
+    } else if (req.query.sort === 'Oldest') {
+      sortField = 'createdAt';
+      sortOrder = 1;
+    }
+
+    // Log parsed values for debugging
+    console.log({ sortField, sortOrder, limit, startIndex });
 
     // Build query object
     const query = {
       brand: { $regex: brand, $options: 'i' }, // Case-insensitive brand filter
-      variant: { $regex: searchTerm, $options: 'i' }, // Case-insensitive variant filter
-      askingPrice: { $gte: minPrice, $lte: maxPrice }, // Price range filter
+      variant: { $regex: variant, $options: 'i' }, // Case-insensitive variant filter
     };
 
-    if (year) query.year = year; // Add year filter if specified
-    if (req.query.fuelType !== undefined) query.fuelType = fuelType; // Add fuel type filter if specified
-    if (req.query.transmissionType !== undefined) query.transmissionType = transmissionType; // Add transmission type filter if specified
+    if (fuelType) query.fuelType = fuelType; // Add fuel type filter if specified
+    if (transmissionType) query.transmissionType = transmissionType; // Add transmission type filter if specified
 
     const listings = await Listing.find(query)
-      .sort({ [sort]: order }) // Sort listings
+      .sort({ [sortField]: sortOrder }) // Sort listings
       .limit(limit) // Limit the number of listings
       .skip(startIndex); // Skip listings for pagination
 
